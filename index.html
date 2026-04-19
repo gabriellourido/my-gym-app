@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0a0a">
     <title>MyGym Pro</title>
-    <link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,131 +14,163 @@
         .glass { background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid #1f2937; }
         .modal-bg { background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); }
         select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; }
-        input:disabled, select:disabled { opacity: 0.4; cursor: not-allowed; }
+        .improved-val { color: #10b981 !important; text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
 </head>
 <body class="font-sans min-h-screen">
-    <div id="app" class="max-w-md mx-auto pb-10">
+    <div id="app" class="max-w-md mx-auto pb-32">
         
-        <header class="p-6 pb-4 flex justify-between items-center bg-[#0a0a0a] sticky top-0 z-30">
-            <h1 class="text-2xl font-black italic tracking-tighter uppercase">My<span class="text-orange-500">Gym</span></h1>
-            <div class="flex gap-4 items-center">
-                <input type="file" id="fileInput" @change="importarDatos" class="hidden" accept=".json">
-                <button @click="triggerFile" class="text-[10px] text-blue-500 font-bold uppercase">Restore</button>
-                <button @click="exportarDatos" class="text-[10px] text-gray-500 font-bold uppercase">Backup</button>
-            </div>
+        <header class="p-6 pb-4 bg-[#0a0a0a] sticky top-0 z-30">
+            <h1 class="text-2xl font-black italic tracking-tighter uppercase text-center">My<span class="text-orange-500">Gym</span></h1>
         </header>
 
         <main class="px-4">
-            <div class="bg-[#141414] p-5 card-custom border border-gray-800 mb-6 shadow-lg">
-                <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest italic">Configurar Ejercicio</h3>
+            <div class="bg-[#141414] p-5 card-custom border border-gray-800 mb-6">
+                <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest italic">Crear Nuevo Ejercicio</h3>
                 <div class="flex gap-2">
-                    <select v-model="nuevoEj.musculo" class="bg-[#1f2937] p-3 text-xs w-1/3 outline-none border border-gray-700">
+                    <select v-model="nuevoEj.musculo" class="bg-[#1f2937] p-3 text-xs w-1/3 outline-none">
                         <option v-for="m in musculos" :value="m">{{m}}</option>
                     </select>
                     <input v-model="nuevoEj.nombre" placeholder="Nombre..." class="bg-[#1f2937] p-3 text-xs flex-1 outline-none uppercase border border-gray-700">
-                    <button @click="addMaestro" class="bg-blue-600 px-5 font-bold text-xl active:scale-90 shadow-lg">+</button>
+                    <button @click="addMaestro" class="bg-blue-600 px-5 font-bold text-xl active:scale-90">+</button>
                 </div>
             </div>
 
             <div class="bg-[#141414] p-5 card-custom border border-orange-900/30 shadow-2xl mb-6">
-                <h3 class="text-[10px] font-black text-orange-500 uppercase mb-4 tracking-widest italic">
-                    {{ editandoID ? 'Modificando Registro' : 'Nueva Sesión' }}
-                </h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[10px] font-black text-orange-500 uppercase tracking-widest italic">
+                        {{ editandoID ? 'Modificando Registro' : 'Cargar Sesión' }}
+                    </h3>
+                    <span v-if="esMejora" class="text-[9px] font-black bg-green-500/20 text-green-400 px-2 py-1 rounded-full uppercase">¡Sobrecarga! 🔥</span>
+                </div>
                 
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <select v-model="nuevaEntrada.musculo" @change="nuevaEntrada.ejercicio = ''" 
-                        :disabled="seriesCargadas.length > 0"
-                        class="w-full p-4 bg-[#1f2937] text-sm outline-none border border-gray-700">
+                        class="w-full p-4 bg-[#1f2937] text-sm outline-none border border-gray-800">
                         <option value="" disabled>Músculo...</option>
                         <option v-for="m in musculos" :value="m">{{m}}</option>
                     </select>
-                    <select v-model="nuevaEntrada.ejercicio" 
-                        :disabled="!nuevaEntrada.musculo || seriesCargadas.length > 0"
-                        class="w-full p-4 bg-[#1f2937] text-sm outline-none border border-gray-700">
+                    <select v-model="nuevaEntrada.ejercicio" @change="autoCargarUltimaVez"
+                        :disabled="!nuevaEntrada.musculo"
+                        class="w-full p-4 bg-[#1f2937] text-sm outline-none border border-gray-800">
                         <option value="" disabled>Ejercicio...</option>
                         <option v-for="e in ejerciciosFiltrados" :value="e.nombre">{{e.nombre}}</option>
                     </select>
                 </div>
                 
-                <div class="bg-black/40 p-5 card-custom mb-5 border border-gray-800/50 shadow-inner">
-                    <div class="flex items-end gap-3 mb-3 text-center">
-                        <div class="flex-1">
-                            <label class="block text-[10px] text-gray-600 font-black uppercase mb-1">Kg</label>
-                            <input v-model.number="tempSerie.peso" type="number" placeholder="0" class="w-full p-4 bg-[#1a1a1a] border border-gray-800 outline-none text-center font-bold text-xl">
+                <div v-if="seriesCargadas.length > 0" class="space-y-3 mb-5">
+                    <div v-for="(s, idx) in seriesCargadas" :key="idx" 
+                        class="bg-black/40 p-4 card-custom border border-gray-800/50 flex items-center gap-3">
+                        <span class="text-[10px] font-black text-gray-600 uppercase w-8">S{{idx + 1}}</span>
+                        <div class="flex flex-1 gap-2">
+                            <input v-model.number="s.peso" type="number" 
+                                :class="{'improved-val': comparativa(idx, 'peso', s.peso)}"
+                                class="w-full p-2 bg-[#1a1a1a] border border-gray-800 text-center font-bold text-sm" placeholder="Kg">
+                            <input v-model.number="s.reps" type="number" 
+                                :class="{'improved-val': comparativa(idx, 'reps', s.reps)}"
+                                class="w-full p-2 bg-[#1a1a1a] border border-gray-800 text-center font-bold text-sm" placeholder="Reps">
                         </div>
-                        <div class="flex-1">
-                            <label class="block text-[10px] text-gray-600 font-black uppercase mb-1">Reps</label>
-                            <input v-model.number="tempSerie.reps" type="number" placeholder="0" class="w-full p-4 bg-[#1a1a1a] border border-gray-800 outline-none text-center font-bold text-xl">
-                        </div>
-                        <button @click="agregarSerie" class="bg-orange-600 w-14 h-14 flex items-center justify-center font-bold text-3xl active:scale-90 shadow-xl">+</button>
+                        <button @click="borrarSerieCargada(idx)" class="text-gray-700 font-bold px-2">✕</button>
                     </div>
-                    
-                    <div v-if="seriesCargadas.length > 0" class="mt-4 space-y-2">
-                        <div v-for="(s, idx) in seriesCargadas" @click="seriesCargadas.splice(idx, 1)" 
-                            class="bg-[#1f2937]/50 text-[11px] px-5 py-3 card-custom flex justify-between border border-gray-700 active:bg-red-900/20 transition-colors">
-                            <span class="text-gray-500 uppercase font-black tracking-widest">Serie {{idx + 1}}</span>
-                            <span class="font-bold text-white text-sm">{{s.peso}}kg <span class="text-orange-500 mx-1">✕</span> {{s.reps}} reps</span>
+                </div>
+
+                <div class="bg-black/20 p-4 card-custom border border-gray-800/30 mb-5 flex items-end gap-2">
+                    <div class="flex-1 text-center">
+                        <label class="block text-[8px] text-gray-600 font-black uppercase mb-1">Nueva Serie</label>
+                        <div class="flex gap-2">
+                            <input v-model.number="tempSerie.peso" type="number" placeholder="Kg" class="w-full p-3 bg-[#1a1a1a] border border-gray-800 text-center text-xs">
+                            <input v-model.number="tempSerie.reps" type="number" placeholder="Reps" class="w-full p-3 bg-[#1a1a1a] border border-gray-800 text-center text-xs">
                         </div>
                     </div>
+                    <button @click="agregarSerie" class="bg-orange-600 w-12 h-12 flex items-center justify-center font-bold text-xl active:scale-90">+</button>
                 </div>
 
                 <div class="flex gap-2">
                     <button @click="guardarRegistro" class="flex-1 bg-white text-black font-black py-4 uppercase text-xs active:scale-95 disabled:opacity-30 tracking-widest" :disabled="seriesCargadas.length === 0">
-                        {{ editandoID ? 'Actualizar Cambios' : 'Guardar Entrenamiento' }}
+                        {{ editandoID ? 'Actualizar' : 'Guardar hoy' }}
                     </button>
                     <button v-if="editandoID || seriesCargadas.length > 0" @click="cancelarEdicion" class="bg-[#1f2937] px-6 font-bold text-red-500 uppercase text-[10px]">X</button>
                 </div>
             </div>
 
             <div class="glass sticky top-[68px] z-20 py-4 -mx-4 px-4 mb-6 flex gap-3 shadow-xl">
-                <input v-model="busquedaTexto" type="text" placeholder="Filtrar por nombre..." class="flex-[2] bg-[#1a1a1a] border border-gray-800 p-3 text-xs outline-none">
+                <input v-model="busquedaTexto" type="text" placeholder="Buscar..." class="flex-[2] bg-[#1a1a1a] border border-gray-800 p-3 text-xs outline-none">
                 <select v-model="filtroMusculo" class="flex-1 bg-[#1a1a1a] border border-gray-800 p-3 text-[10px] font-black text-orange-500 uppercase outline-none">
-                    <option value="Todos">TODOS</option>
+                    <option value="">FILTRAR...</option>
                     <option v-for="m in musculos" :value="m">{{m}}</option>
                 </select>
             </div>
 
-            <div v-for="nombreEj in ejerciciosUnicos" :key="nombreEj" class="bg-[#141414] p-6 mb-6 card-custom border border-gray-900 shadow-lg">
-                <div class="flex justify-between items-start mb-5">
-                    <div>
-                        <span class="text-orange-500 font-black text-[10px] uppercase tracking-widest">{{ getMusculo(nombreEj) }}</span>
-                        <h4 class="text-xl font-bold uppercase tracking-tighter text-white">{{ nombreEj }}</h4>
-                    </div>
-                    <button @click="verGrafico(nombreEj)" class="bg-gray-800/40 p-2 rounded-xl text-orange-500 active:scale-90">📈</button>
-                </div>
-
-                <div class="mb-5">
-                    <select v-model="indicesSeleccionados[nombreEj]" class="w-full bg-[#1a1a1a] border border-gray-800 p-4 text-xs font-bold text-gray-400 outline-none">
-                        <option v-for="(sesion, index) in getSesiones(nombreEj)" :value="index">{{ sesion.fecha }}</option>
-                    </select>
-                </div>
-
-                <div v-if="getSesionActiva(nombreEj)" class="space-y-3">
-                    <div class="flex justify-between items-center mb-1 px-1">
-                        <span class="text-[9px] text-gray-700 font-black uppercase italic tracking-tighter">{{ getSesionActiva(nombreEj).fecha }}</span>
-                        <div class="flex gap-4">
-                            <button @click="prepararEdicion(getSesionActiva(nombreEj))" class="text-blue-500 text-[10px] font-black uppercase tracking-widest">Editar</button>
-                            <button @click="borrarRegistro(getSesionActiva(nombreEj).id)" class="text-gray-800 text-[10px] font-black uppercase tracking-widest">Borrar</button>
+            <div v-if="busquedaTexto || filtroMusculo">
+                <div v-for="nombreEj in ejerciciosUnicos" :key="nombreEj" class="bg-[#141414] p-6 mb-6 card-custom border border-gray-900 shadow-lg">
+                    <div class="flex justify-between items-start mb-5">
+                        <div>
+                            <span class="text-orange-500 font-black text-[10px] uppercase tracking-widest">{{ getMusculo(nombreEj) }}</span>
+                            <h4 class="text-xl font-bold uppercase tracking-tighter text-white">{{ nombreEj }}</h4>
                         </div>
+                        <button @click="verGrafico(nombreEj)" class="bg-gray-800/40 p-2 rounded-xl text-orange-500">📈</button>
                     </div>
-                    
-                    <div v-for="(s, idx) in getSesionActiva(nombreEj).series" class="bg-black/40 p-4 card-custom flex justify-between px-6 border border-gray-800/30 shadow-md">
-                        <span class="text-gray-600 text-[10px] font-black self-center uppercase tracking-widest">S{{idx+1}}</span>
-                        <div class="text-sm font-bold text-white">
-                            <span class="text-lg">{{s.peso}}kg</span> 
-                            <span class="text-orange-500 mx-3 italic text-xs font-black">x</span> 
-                            <span class="text-lg">{{s.reps}} <span class="text-[10px] font-normal text-gray-600">r</span></span>
+
+                    <div class="mb-5">
+                        <select v-model="indicesSeleccionados[nombreEj]" class="w-full bg-[#1a1a1a] border border-gray-800 p-4 text-xs font-bold text-gray-400 outline-none">
+                            <option v-for="(sesion, index) in getSesiones(nombreEj)" :value="index">{{ sesion.fecha }}</option>
+                        </select>
+                    </div>
+
+                    <div v-if="getSesionActiva(nombreEj)" class="space-y-3">
+                        <div v-for="(s, idx) in getSesionActiva(nombreEj).series" class="bg-black/40 p-4 card-custom flex justify-between px-6 border border-gray-800/30">
+                            <span class="text-gray-600 text-[10px] font-black self-center uppercase tracking-widest">S{{idx+1}}</span>
+                            <div class="text-sm font-bold text-white text-lg">
+                                {{s.peso}}kg <span class="text-orange-500 mx-2 italic font-black">x</span> {{s.reps}}
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded-2xl border border-gray-800 mt-4">
+                            <span class="text-[9px] font-black text-gray-500 uppercase ml-2 italic">Timer:</span>
+                            <div class="flex gap-1">
+                                <button v-for="t in [30, 60, 90]" :key="t" @click="startTimer(t)" class="px-3 py-1 bg-gray-800 text-[9px] font-black rounded-lg active:bg-orange-600 uppercase">
+                                    {{t}}s
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-4 mt-2 px-1">
+                            <button @click="prepararEdicion(getSesionActiva(nombreEj))" class="text-blue-500 text-[10px] font-black uppercase">Editar Registro</button>
+                            <button @click="borrarRegistro(getSesionActiva(nombreEj).id)" class="text-gray-800 text-[10px] font-black uppercase">Borrar</button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div v-else class="py-20 text-center opacity-20">
+                <p class="text-gray-500 font-black uppercase text-[10px] tracking-[0.3em]">Historial Oculto</p>
+            </div>
+
+            <div class="mt-20 pt-10 border-t border-gray-900 flex flex-col items-center gap-4 opacity-40">
+                <input type="file" id="fileInput" @change="importarDatos" class="hidden" accept=".json">
+                <div class="flex gap-4">
+                    <button @click="triggerFile" class="text-[8px] font-black uppercase py-2 px-4 border border-gray-800 rounded-full">Restore JSON</button>
+                    <button @click="exportarDatos" class="text-[8px] font-black uppercase py-2 px-4 border border-gray-800 rounded-full">Backup JSON</button>
+                </div>
+            </div>
         </main>
+
+        <transition name="fade">
+            <div v-if="timerActivo" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-orange-600 px-6 py-4 rounded-full shadow-2xl border border-orange-400/30">
+                <div class="flex flex-col text-center">
+                    <span class="text-[8px] font-black uppercase leading-none text-black opacity-70">Descanso:</span>
+                    <span class="font-black text-2xl text-white leading-none">{{ tiempoRestante }}s</span>
+                </div>
+                <button @click="stopTimer" class="bg-black/20 text-white w-8 h-8 rounded-full font-bold">✕</button>
+            </div>
+        </transition>
 
         <div v-if="modalGrafico" class="fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" @click.self="modalGrafico = false">
             <div class="bg-[#141414] w-full max-w-sm p-6 card-custom border border-gray-800 shadow-2xl">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-orange-500 font-black uppercase text-[10px] tracking-widest italic">Evolución de Cargas</h3>
+                    <h3 class="text-orange-500 font-black uppercase text-[10px] tracking-widest italic">Progreso</h3>
                     <button @click="modalGrafico = false" class="text-white bg-gray-800 w-8 h-8 rounded-full">✕</button>
                 </div>
                 <canvas id="chart"></canvas>
@@ -148,8 +179,6 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-
         const { createApp } = Vue;
         let chart = null;
 
@@ -159,81 +188,128 @@
                     musculos: ['Pecho', 'Espalda', 'Hombro', 'Pierna', 'Bíceps', 'Tríceps'],
                     maestro: JSON.parse(localStorage.getItem('gym_m') || '[]'),
                     historial: JSON.parse(localStorage.getItem('gym_h') || '[]'),
-                    nuevaEntrada: { musculo: '', ejercicio: '' },
+                    nuevaEntrada: JSON.parse(localStorage.getItem('gym_draft_e') || '{"musculo":"","ejercicio":""}'),
+                    seriesCargadas: JSON.parse(localStorage.getItem('gym_draft_s') || '[]'),
+                    ultimaVezRef: [],
                     tempSerie: { peso: null, reps: null },
-                    seriesCargadas: [],
                     busquedaTexto: '',
-                    filtroMusculo: 'Todos',
+                    filtroMusculo: '',
                     nuevoEj: { musculo: 'Pecho', nombre: '' },
                     indicesSeleccionados: {},
                     editandoID: null,
-                    modalGrafico: false
+                    modalGrafico: false,
+                    timerActivo: false,
+                    tiempoRestante: 0,
+                    intervalo: null
                 }
+            },
+            watch: {
+                nuevaEntrada: { handler() { this.saveDraft(); }, deep: true },
+                seriesCargadas: { handler() { this.saveDraft(); }, deep: true }
             },
             computed: {
                 ejerciciosFiltrados() { return this.maestro.filter(e => e.musculo === this.nuevaEntrada.musculo); },
                 ejerciciosUnicos() {
+                    if (!this.busquedaTexto && !this.filtroMusculo) return [];
                     let h = this.historial.filter(x => {
-                        const m = this.filtroMusculo === 'Todos' || x.musculo === this.filtroMusculo;
+                        const m = !this.filtroMusculo || x.musculo === this.filtroMusculo;
                         const t = x.ejercicio.toLowerCase().includes(this.busquedaTexto.toLowerCase());
                         return m && t;
                     });
                     return [...new Set(h.map(x => x.ejercicio))];
+                },
+                esMejora() {
+                    return this.seriesCargadas.some((s, idx) => this.comparativa(idx, 'peso', s.peso) || this.comparativa(idx, 'reps', s.reps));
                 }
             },
             methods: {
-                vibrar() { if (navigator.vibrate) navigator.vibrate(40); },
+                vibrar(tipo) {
+                    if (!navigator.vibrate) return;
+                    if (tipo === 'success') navigator.vibrate(40);
+                    if (tipo === 'delete') navigator.vibrate([20, 50, 20]);
+                    if (tipo === 'alarm') navigator.vibrate([400, 200, 400, 200, 400]);
+                },
+                saveDraft() {
+                    localStorage.setItem('gym_draft_e', JSON.stringify(this.nuevaEntrada));
+                    localStorage.setItem('gym_draft_s', JSON.stringify(this.seriesCargadas));
+                },
+                comparativa(idx, tipo, valor) {
+                    if (!this.ultimaVezRef[idx] || !valor) return false;
+                    return valor > this.ultimaVezRef[idx][tipo];
+                },
+                autoCargarUltimaVez() {
+                    if (!this.nuevaEntrada.ejercicio || this.editandoID) return;
+                    const sesiones = this.getSesiones(this.nuevaEntrada.ejercicio);
+                    if (sesiones.length > 0) {
+                        this.ultimaVezRef = JSON.parse(JSON.stringify(sesiones[0].series));
+                        this.seriesCargadas = JSON.parse(JSON.stringify(this.ultimaVezRef));
+                        this.vibrar('success');
+                    } else {
+                        this.seriesCargadas = [];
+                        this.ultimaVezRef = [];
+                    }
+                },
+                startTimer(segundos) {
+                    this.stopTimer();
+                    this.vibrar('success');
+                    this.timerActivo = true;
+                    this.tiempoRestante = segundos;
+                    this.intervalo = setInterval(() => {
+                        this.tiempoRestante--;
+                        if (this.tiempoRestante <= 0) {
+                            this.stopTimer();
+                            this.vibrar('alarm');
+                            alert("¡Tiempo cumplido!");
+                        }
+                    }, 1000);
+                },
+                stopTimer() { clearInterval(this.intervalo); this.timerActivo = false; },
                 triggerFile() { document.getElementById('fileInput').click(); },
                 importarDatos(event) {
                     const file = event.target.files[0];
-                    if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        try {
-                            const data = JSON.parse(e.target.result);
-                            if (data.h && data.m) {
-                                if (confirm("¿Reemplazar datos actuales con este backup?")) {
-                                    this.historial = data.h;
-                                    this.maestro = data.m;
-                                    this.save();
-                                    localStorage.setItem('gym_m', JSON.stringify(this.maestro));
-                                    location.reload();
-                                }
-                            }
-                        } catch (err) { alert("Archivo no válido"); }
+                        const data = JSON.parse(e.target.result);
+                        if (data.h && data.m && confirm("¿Restaurar?")) {
+                            this.historial = data.h; this.maestro = data.m;
+                            this.save(); localStorage.setItem('gym_m', JSON.stringify(this.maestro));
+                            location.reload();
+                        }
                     };
                     reader.readAsText(file);
                 },
                 addMaestro() {
-                    if(!this.nuevoEj.nombre) return;
                     const n = this.nuevoEj.nombre.toUpperCase().trim();
-                    if(this.maestro.find(e => e.nombre === n)) return alert("Ya existe");
+                    if(!n || this.maestro.find(e => e.nombre === n)) return;
                     this.maestro.push({ ...this.nuevoEj, nombre: n });
                     localStorage.setItem('gym_m', JSON.stringify(this.maestro));
-                    this.nuevoEj.nombre = '';
-                    this.vibrar();
+                    this.nuevoEj.nombre = ''; this.vibrar('success');
                 },
                 agregarSerie() {
                     if(this.tempSerie.peso > 0 && this.tempSerie.reps > 0) {
                         this.seriesCargadas.push({...this.tempSerie});
                         this.tempSerie.peso = null; this.tempSerie.reps = null;
-                        this.vibrar();
+                        this.vibrar('success');
                     }
+                },
+                borrarSerieCargada(idx) {
+                    this.seriesCargadas.splice(idx, 1);
+                    this.vibrar('delete');
                 },
                 guardarRegistro() {
                     if(this.editandoID) {
                         const idx = this.historial.findIndex(h => h.id === this.editandoID);
-                        this.historial[idx].series = [...this.seriesCargadas];
+                        this.historial[idx].series = JSON.parse(JSON.stringify(this.seriesCargadas));
                     } else {
-                        const s = {
-                            id: Date.now(), ...this.nuevaEntrada,
-                            series: [...this.seriesCargadas],
-                            fecha: new Date().toLocaleString('es-AR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', hour12: true})
-                        };
-                        this.historial.unshift(s);
-                        this.indicesSeleccionados[this.nuevaEntrada.ejercicio] = 0;
+                        this.historial.unshift({
+                            id: Date.now(),
+                            musculo: this.nuevaEntrada.musculo,
+                            ejercicio: this.nuevaEntrada.ejercicio,
+                            series: JSON.parse(JSON.stringify(this.seriesCargadas)),
+                            fecha: new Date().toLocaleString('es-AR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+                        });
                     }
-                    this.save(); this.cancelarEdicion(); this.vibrar();
+                    this.save(); this.cancelarEdicion(); this.vibrar('success');
                 },
                 getSesiones(n) { return this.historial.filter(h => h.ejercicio === n); },
                 getSesionActiva(n) {
@@ -243,13 +319,20 @@
                 },
                 getMusculo(n) { return this.historial.find(h => h.ejercicio === n)?.musculo; },
                 prepararEdicion(s) {
-                    this.editandoID = s.id;
+                    this.editandoID = s.id; 
                     this.nuevaEntrada = { musculo: s.musculo, ejercicio: s.ejercicio };
-                    this.seriesCargadas = [...s.series];
+                    this.seriesCargadas = JSON.parse(JSON.stringify(s.series));
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
-                cancelarEdicion() { this.editandoID = null; this.seriesCargadas = []; this.nuevaEntrada = { musculo: '', ejercicio: '' }; },
-                borrarRegistro(id) { if(confirm("¿Borrar?")) { this.historial = this.historial.filter(h => h.id !== id); this.save(); } },
+                cancelarEdicion() { 
+                    this.editandoID = null; 
+                    this.seriesCargadas = []; 
+                    this.ultimaVezRef = [];
+                    this.nuevaEntrada = { musculo: '', ejercicio: '' }; 
+                    localStorage.removeItem('gym_draft_e');
+                    localStorage.removeItem('gym_draft_s');
+                },
+                borrarRegistro(id) { if(confirm("¿Borrar?")) { this.historial = this.historial.filter(h => h.id !== id); this.save(); this.vibrar('delete'); } },
                 save() { localStorage.setItem('gym_h', JSON.stringify(this.historial)); },
                 exportarDatos() {
                     const d = JSON.stringify({h: this.historial, m: this.maestro});
@@ -268,14 +351,9 @@
                                 labels: ses.map(s => s.fecha.split(' ')[0]),
                                 datasets: [{
                                     data: ses.map(s => Math.max(...s.series.map(x => x.peso))),
-                                    borderColor: '#f97316',
-                                    tension: 0.4,
-                                    fill: true,
-                                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                                    pointBackgroundColor: '#fff'
+                                    borderColor: '#f97316', tension: 0.4, fill: true, backgroundColor: 'rgba(249, 115, 22, 0.1)'
                                 }]
-                            },
-                            options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222' } }, x: { grid: { display: false } } } }
+                            }
                         });
                     }, 100);
                 }
